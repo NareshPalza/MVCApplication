@@ -4,35 +4,81 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
 
 
+
 trigger:
 - main
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'windows-latest'
 
 variables:
-  buildConfiguration: 'Release'
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
 
+stages:
+# ------------------ Build for QA ------------------
+- stage: Build_QA
+  displayName: 'Build for QA (Test Configuration)'
+  jobs:
+  - job: BuildTest
+    displayName: 'Build and Publish Test Artifact'
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '7.x.x'
 
-steps:
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'restore'
-    feedsToUse: 'select'
+    - task: DotNetCoreCLI@2
+      displayName: 'Build with Test Configuration'
+      inputs:
+        command: 'build'
+        projects: '**/*.csproj'
+        arguments: '--configuration Test'
 
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'build'
-    arguments: '--configuration $(buildConfiguration)'
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish Test Artifact'
+      inputs:
+        command: 'publish'
+        publishWebProjects: true
+        arguments: '--configuration Test --output $(Build.ArtifactStagingDirectory)'
+        zipAfterPublish: true
 
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'publish'
-    publishWebProjects: true
-    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Test Artifact'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'drop-test'
 
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
+# ------------------ Build for PROD ------------------
+- stage: Build_PROD
+  displayName: 'Build for PROD (Release Configuration)'
+  dependsOn: Build_QA
+  jobs:
+  - job: BuildRelease
+    displayName: 'Build and Publish Release Artifact'
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '7.x.x'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Build with Release Configuration'
+      inputs:
+        command: 'build'
+        projects: '**/*.csproj'
+        arguments: '--configuration Release'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish Release Artifact'
+      inputs:
+        command: 'publish'
+        publishWebProjects: true
+        arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)'
+        zipAfterPublish: true
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Release Artifact'
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'drop-release'
