@@ -23,10 +23,6 @@ stages:
   - job: BuildTest
     displayName: 'Build and Publish Test Artifact'
     steps:
-    - task: UseDotNet@2
-      inputs:
-        packageType: 'sdk'
-        version: '7.x.x'
 
     - task: DotNetCoreCLI@2
       displayName: 'Build with Test Configuration'
@@ -57,10 +53,6 @@ stages:
   - job: BuildRelease
     displayName: 'Build and Publish Release Artifact'
     steps:
-    - task: UseDotNet@2
-      inputs:
-        packageType: 'sdk'
-        version: '7.x.x'
 
     - task: DotNetCoreCLI@2
       displayName: 'Build with Release Configuration'
